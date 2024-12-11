@@ -1,48 +1,49 @@
-from flask import Flask, request, render_template_string, flash, redirect, url_for
+from flask import Flask, request, render_template_string, redirect, flash
 from instagrapi import Client
-import time
+import os
 
 # Initialize Flask app
 app = Flask(__name__)
 app.secret_key = "your_secret_key"
 
-# HTML Template
+# Flask HTML Template
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instagram Group Name Changer</title>
+    <title>Instagram Group Chat Name Changer</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #4CAF50; /* Change background color here */
-            color: white;
+            background-color: #2a2a72;
+            margin: 0;
+            padding: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            margin: 0;
+            color: white;
         }
         .container {
-            background-color: #ffffff;
-            color: #333;
-            padding: 20px;
+            background-color: #1a1a40;
+            padding: 30px;
             border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
             max-width: 400px;
             width: 100%;
         }
         h1 {
             text-align: center;
+            color: #ffcc00;
             margin-bottom: 20px;
-            color: #4CAF50;
         }
         label {
             display: block;
             font-weight: bold;
             margin: 10px 0 5px;
+            color: white;
         }
         input, button {
             width: 100%;
@@ -52,31 +53,36 @@ HTML_TEMPLATE = '''
             border-radius: 5px;
             font-size: 16px;
         }
+        input:focus, button:focus {
+            outline: none;
+            border-color: #ffcc00;
+            box-shadow: 0 0 5px rgba(255, 204, 0, 0.5);
+        }
         button {
-            background-color: #4CAF50;
-            color: white;
+            background-color: #ffcc00;
+            color: #2a2a72;
             border: none;
             cursor: pointer;
             font-weight: bold;
         }
         button:hover {
-            background-color: #45a049;
+            background-color: #ffdd33;
         }
         .message {
-            text-align: center;
+            color: red;
             font-size: 14px;
+            text-align: center;
         }
         .success {
             color: green;
-        }
-        .error {
-            color: red;
+            font-size: 14px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Group Name Changer</h1>
+        <h1>Change Group Chat Name</h1>
         <form action="/" method="POST">
             <label for="username">Instagram Username:</label>
             <input type="text" id="username" name="username" placeholder="Enter your username" required>
@@ -84,55 +90,48 @@ HTML_TEMPLATE = '''
             <label for="password">Instagram Password:</label>
             <input type="password" id="password" name="password" placeholder="Enter your password" required>
 
-            <label for="group_id">Target Group Thread ID:</label>
-            <input type="text" id="group_id" name="group_id" placeholder="Enter group thread ID" required>
+            <label for="thread_id">Target Group Thread ID:</label>
+            <input type="text" id="thread_id" name="thread_id" placeholder="Enter group thread ID" required>
 
-            <label for="new_name">New Group Name:</label>
-            <input type="text" id="new_name" name="new_name" placeholder="Enter new group name" required>
+            <label for="new_title">New Group Name:</label>
+            <input type="text" id="new_title" name="new_title" placeholder="Enter the new group name" required>
 
-            <button type="submit">Change Group Name</button>
+            <button type="submit">Change Name</button>
         </form>
-        <div class="message">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <p class="{{ category }}">{{ message }}</p>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-        </div>
     </div>
 </body>
 </html>
 '''
 
-# Flask route to render form and process requests
+# Flask Route for Rendering Form and Handling Request
 @app.route("/", methods=["GET", "POST"])
 def change_group_name():
     if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-        group_id = request.form.get("group_id")
-        new_name = request.form.get("new_name")
-
-        # Login and change group name
         try:
-            # Log in to Instagram
+            # Get form inputs
+            username = request.form["username"]
+            password = request.form["password"]
+            thread_id = request.form["thread_id"]
+            new_title = request.form["new_title"]
+
+            # Login to Instagram
             client = Client()
             client.login(username, password)
-            flash("Login successful!", "success")
+            flash(f"Successfully logged in as {username}!", "success")
 
-            # Change group name
-            client.direct_thread_update_title(group_id, new_name)
-            flash(f"Group name successfully changed to '{new_name}'!", "success")
+            # Change group chat name
+            client.direct_thread_update_title(thread_id, new_title)
+            flash(f"Group chat name updated to: {new_title}", "success")
+
         except Exception as e:
             flash(f"An error occurred: {str(e)}", "error")
-            return redirect(url_for("change_group_name"))
+            return redirect("/")
 
-        return redirect(url_for("change_group_name"))
-
-    # Render the form
+    # Render the HTML template
     return render_template_string(HTML_TEMPLATE)
 
+# Run Flask App
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = 5000  # Change to any port you prefer
+    app.run(host="0.0.0.0", port=port, debug=True)
+    
