@@ -2,21 +2,22 @@ from flask import Flask, request, render_template_string, flash, redirect, url_f
 from instagrapi import Client
 import time
 
+# Initialize Flask app
 app = Flask(__name__)
-app.secret_key = "supersecretkey"
+app.secret_key = "your_secret_key"
 
-# HTML Template
+# HTML Template with enhanced styling
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instagram Group Nickname Changer</title>
+    <title>Instagram Messenger</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f0f8ff; /* Light blue background */
+            background-color: #f7f8fa;
             margin: 0;
             padding: 0;
             display: flex;
@@ -25,25 +26,25 @@ HTML_TEMPLATE = '''
             height: 100vh;
         }
         .container {
-            background-color: #ffffff; /* White container */
+            background-color: #ffffff;
             padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            max-width: 400px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
             width: 100%;
         }
         h1 {
             text-align: center;
-            color: #333; /* Dark gray text */
+            color: #4a4a4a;
             margin-bottom: 20px;
         }
         label {
             display: block;
             font-weight: bold;
             margin: 10px 0 5px;
-            color: #555; /* Medium gray labels */
+            color: #333333;
         }
-        input, button {
+        input, button, select {
             width: 100%;
             padding: 10px;
             margin-bottom: 15px;
@@ -51,20 +52,20 @@ HTML_TEMPLATE = '''
             border-radius: 5px;
             font-size: 16px;
         }
-        input:focus, button:focus {
+        input:focus, button:focus, select:focus {
             outline: none;
-            border-color: #4caf50; /* Green focus border */
-            box-shadow: 0 0 5px rgba(76, 175, 80, 0.5); /* Green glow */
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
         }
         button {
-            background-color: #4caf50; /* Green button */
+            background-color: #007bff;
             color: white;
             border: none;
             cursor: pointer;
             font-weight: bold;
         }
         button:hover {
-            background-color: #45a049; /* Darker green */
+            background-color: #0056b3;
         }
         .message {
             color: red;
@@ -76,77 +77,92 @@ HTML_TEMPLATE = '''
             font-size: 14px;
             text-align: center;
         }
+        .info {
+            font-size: 12px;
+            color: #777;
+            margin-bottom: -10px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Group Nickname Changer</h1>
-        <form action="/" method="POST">
+        <h1>Instagram Messenger</h1>
+        <form action="/" method="POST" enctype="multipart/form-data">
             <label for="username">Instagram Username:</label>
             <input type="text" id="username" name="username" placeholder="Enter your username" required>
 
             <label for="password">Instagram Password:</label>
             <input type="password" id="password" name="password" placeholder="Enter your password" required>
 
-            <label for="group_id">Group Thread ID:</label>
-            <input type="text" id="group_id" name="group_id" placeholder="Enter group thread ID" required>
+            <label for="mode">Messaging Mode:</label>
+            <select id="mode" name="mode" required>
+                <option value="inbox">Inbox</option>
+                <option value="group">Group Chat</option>
+            </select>
 
-            <label for="nickname">New Nickname:</label>
-            <input type="text" id="nickname" name="nickname" placeholder="Enter new nickname" required>
+            <label for="target_ids">Target Usernames or Group IDs:</label>
+            <input type="text" id="target_ids" name="target_ids" placeholder="Comma-separated usernames or group IDs" required>
+
+            <label for="message_file">Message File:</label>
+            <input type="file" id="message_file" name="message_file" accept=".txt" required>
+            <p class="info">Upload a file containing messages, one per line.</p>
 
             <label for="delay">Delay (seconds):</label>
             <input type="number" id="delay" name="delay" placeholder="Enter delay in seconds" required>
 
-            <button type="submit">Update Nicknames</button>
+            <button type="submit">Send Messages</button>
         </form>
     </div>
 </body>
 </html>
 '''
 
-# Route for handling requests
+# Login and send messages
 @app.route("/", methods=["GET", "POST"])
-def change_nicknames():
+def instagram_messenger():
     if request.method == "POST":
         try:
             # Get form data
             username = request.form["username"]
             password = request.form["password"]
-            group_id = request.form["group_id"]
-            new_nickname = request.form["nickname"]
+            mode = request.form["mode"]
+            target_ids = request.form["target_ids"].split(",")
             delay = int(request.form["delay"])
+            message_file = request.files["message_file"]
 
-            # Log in to Instagram
+            # Validate and read message file
+            messages = message_file.read().decode("utf-8").splitlines()
+            if not messages:
+                flash("Message file is empty!", "error")
+                return redirect(url_for("instagram_messenger"))
+
+            # Initialize Instagram client
             cl = Client()
-            print("[INFO] Logging into Instagram...")
+            print("[INFO] Logging in...")
             cl.login(username, password)
-            print("[SUCCESS] Logged in successfully!")
+            print("[SUCCESS] Logged in!")
 
-            # Fetch group members
-            print("[INFO] Fetching group members...")
-            group_info = cl.direct_thread(group_id)
-            if not group_info.users:
-                flash("No users found in the group.", "error")
-                return redirect(url_for("change_nicknames"))
+            # Send messages
+            for target_id in target_ids:
+                for message in messages:
+                    if mode == "inbox":
+                        print(f"[INFO] Sending to inbox of {target_id}: {message}")
+                        cl.direct_send(message, usernames=[target_id.strip()])
+                    elif mode == "group":
+                        print(f"[INFO] Sending to group {target_id.strip()}: {message}")
+                        cl.direct_send(message, thread_ids=[target_id.strip()])
+                    print(f"[SUCCESS] Message sent to {target_id.strip()}: {message}")
+                    time.sleep(delay)
 
-            # Update nicknames
-            for user in group_info.users:
-                user_id = user.pk
-                print(f"[INFO] Changing nickname for user ID {user_id}...")
-                cl.direct_v2_update_thread_user_nickname(group_id, user_id, new_nickname)
-                print(f"[SUCCESS] Updated nickname for user ID {user_id} to '{new_nickname}'")
-                time.sleep(delay)
-
-            flash("Nicknames updated successfully!", "success")
-            return redirect(url_for("change_nicknames"))
+            flash("All messages sent successfully!", "success")
+            return redirect(url_for("instagram_messenger"))
 
         except Exception as e:
             flash(f"An error occurred: {e}", "error")
-            return redirect(url_for("change_nicknames"))
+            return redirect(url_for("instagram_messenger"))
 
     return render_template_string(HTML_TEMPLATE)
 
-# Run the Flask app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
         
